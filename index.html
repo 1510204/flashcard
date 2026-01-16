@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flashcard App</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 2.5em;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stats-bar {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 25px;
+      padding: 15px;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      border-radius: 12px;
+    }
+    .stat-item {
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #667eea;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+    }
+    .category-section {
+      margin-bottom: 25px;
+    }
+    .category-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .category-header h3 {
+      color: #333;
+      font-size: 1.2em;
+    }
+    .category-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-small {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.3s;
+      font-weight: 500;
+    }
+    .btn-add {
+      background: #10b981;
+      color: white;
+    }
+    .btn-add:hover {
+      background: #059669;
+      transform: translateY(-2px);
+    }
+    .btn-delete {
+      background: #ef4444;
+      color: white;
+    }
+    .btn-delete:hover {
+      background: #dc2626;
+      transform: translateY(-2px);
+    }
+    #categoryButtons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .category-btn {
+      padding: 12px 20px;
+      border: 2px solid #667eea;
+      border-radius: 10px;
+      background: white;
+      color: #667eea;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 600;
+    }
+    .category-btn:hover {
+      background: #f0f4ff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+    .category-btn.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+      transform: translateY(-2px);
+    }
+    .card-container {
+      perspective: 1000px;
+      margin-bottom: 30px;
+    }
+    .card {
+      width: 100%;
+      height: 280px;
+      background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: bold;
+      color: #333;
+      cursor: pointer;
+      transition: all 0.4s;
+      position: relative;
+      border: 3px solid #e5e7eb;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+    }
+    .card-text {
+      padding: 20px;
+      text-align: center;
+      word-wrap: break-word;
+    }
+    .card-side-indicator {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      font-size: 14px;
+      color: #9ca3af;
+      font-weight: normal;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 14px 28px;
+border: none;
+      border-radius: 12px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-nav {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .btn-speak {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    .btn-shuffle {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    .settings-section {
+      background: #f9fafb;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 25px;
+    }
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .settings-row:last-child {
+      border-bottom: none;
+    }
+    .settings-label {
+      font-size: 15px;
+      color: #374151;
+      font-weight: 500;
+    }
+    .voice-select {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .voice-select select {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 2px solid #e5e7eb;
+      font-size: 14px;
+      cursor: pointer;
+      background: white;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 26px;
+      background: #d1d5db;
+      border-radius: 13px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .toggle-switch.active {
+      background: #10b981;
+    }
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s;
+    }
+    .toggle-switch.active::after {
+      transform: translateX(24px);
+    }
+    .input-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 25px;
+    }
+    .input-group {
+      display: flex;
+      gap: 12px;
+    }
+    .input-section input {
+      flex: 1;
+      padding: 14px;
+      border-radius: 10px;
+      border: 2px solid #e5e7eb;
+      font-size: 15px;
+      transition: all 0.3s;
+    }
+    .input-section input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .btn-add-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 14px 28px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .btn-add-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    .card-list-section {
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 2px solid #e5e7eb;
+    }
+    .list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .btn-toggle-list {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .btn-toggle-list:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    #cardList {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .card-list-item {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s;
+    }
+    .card-list-item:hover {
+      transform: translateX(5px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+    .card-list-content {
+      flex: 1;
+    }
+    .card-list-front {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    .card-list-back {
+      color: #6b7280;
+      font-size: 14px;
+    }
+    .card-list-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-icon {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+    .btn-edit {
+      background: #3b82f6;
+      color: white;
+    }
+    .btn-edit:hover {
+      background: #2563eb;
+      transform: scale(1.05);
+    }
+    .btn-del {
+      background: #ef4444;
+      color: white;
+    }
+    .btn-del:hover {
+      background: #dc2626;
+      transform: scale(1.05);
+    }
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s;
+    }
+    .speaking-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: #10b981;
+      border-radius: 50%;
+      margin-left: 8px;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.2); }
+    }
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+      .card {
+        height: 220px;
+        font-size: 24px;
+      }
+      .input-group {
+        flex-direction: column;
+      }
+      .stats-bar {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎓 Flashcard Học Từ Vựng</h1>
+    
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-value" id="totalCards">0</div>
+        <div class="stat-label">Tổng số từ</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="currentProgress">0/0</div>
+        <div class="stat-label">Tiến độ</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="categoryCount">0</div>
+        <div class="stat-label">Danh mục</div>
+      </div>
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+    </div>
+    
+    <div class="category-section">
+      <div class="category-header">
+        <h3>📂 Danh mục học tập</h3>
+        <div class="category-actions">
+          <button class="btn-small btn-add" onclick="addCategory()">➕ Thêm mới</button>
+          <button class="btn-small btn-delete" onclick="deleteCategory()">🗑️ Xóa</button>
+        </div>
+      </div>
+      <div id="categoryButtons"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-row">
+        <span class="settings-label">🎤 Giọng phát âm</span>
+        <div class="voice-select">
+          <select id="voiceSelect" onchange="changeVoiceEngine()" style="display: none;">
+            <option value="browser">Mặc định</option>
+          </select>
+        </div>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">🔊 Tự động phát âm khi chuyển từ</span>
+        <div class="toggle-switch active" id="autoSpeakToggle" onclick="toggleAutoSpeak()"></div>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">🔄 Tự động lật thẻ sau 2 giây</span>
+        <div class="toggle-switch" id="autoFlipToggle" onclick="toggleAutoFlip()"></div>
+      </div>
+    </div>
+    
+    <div class="card-container">
+      <div class="card" onclick="flipCard()">
+        <span class="card-side-indicator" id="sideIndicator">Mặt trước</span>
+        <div class="card-text" id="cardText">Nhấp để bắt đầu</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-nav" onclick="prevCard()">⬅️ Trước</button>
+      <button class="btn btn-speak" onclick="speakText(cards[current]?.front)" id="speakBtn">
+        🔊 Phát âm
+        <span id="speakingIndicator" style="display: none;" class="speaking-indicator"></span>
+      </button>
+      <button class="btn btn-shuffle" onclick="shuffleAndRestart()">🔀 Xáo trộn</button>
+      <button class="btn btn-nav" onclick="nextCard()">Tiếp ➡️</button>
+    </div>
+    
+    <div class="input-section">
+      <div class="input-group">
+        <input type="text" id="newFront" placeholder="Từ tiếng Anh (Front)" onkeypress="handleEnter(event)">
+        <input type="text" id="newBack" placeholder="Nghĩa tiếng Việt (Back)" onkeypress="handleEnter(event)">
+      </div>
+      <button class="btn-add-card" onclick="addCard()">➕ Thêm thẻ mới</button>
+    </div>
+
+    <div class="card-list-section">
+      <div class="list-header">
+        <h3 style="color: #333;">📚 Danh sách từ vựng</h3>
+        <button class="btn-toggle-list" onclick="toggleCardList()">
+          <span id="toggleListText">👁️ Hiện danh sách</span>
+        </button>
+      </div>
+      <ul id="cardList" style="display: none;"></ul>
+    </div>
+  </div>
+
+  <script>
+    const CATEGORY_KEY = 'flashcard_categories_v3';
+    const SETTINGS_KEY = 'flashcard_settings';
+    
+    let categories = JSON.parse(localStorage.getItem(CATEGORY_KEY)) || {
+      'Từ vựng cơ bản': [
+        { front: 'abandon', back: 'từ bỏ, ruồng bỏ' },
+        { front: 'benefit', back: 'lợi ích' },
+        { front: 'challenge', back: 'thử thách' }
+      ],
+      'Từ vựng nâng cao': [
+        { front: 'efficient', back: 'hiệu quả' },
+        { front: 'flexible', back: 'linh hoạt' }
+      ]
+    };
+
+    let settings = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {
+      autoSpeak: true,
+      autoFlip: false,
+      voiceEngine: 'google'
+    };
+    
+    let currentCategory = Object.keys(categories)[0];
+    let cards = categories[currentCategory] || [];
+    let current = 0;
+    let learningOrder = [];
+    let currentIndex = 0;
+    let isFlipped = false;
+    let autoFlipTimeout = null;
+    let currentAudio = null;
+
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function saveToStorage() {
+      localStorage.setItem(CATEGORY_KEY, JSON.stringify(categories));
+    }
+
+    function saveSettings() {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
+
+    function updateStats() {
+      const totalCards = cards.length;
+      document.getElementById('totalCards').textContent = totalCards;
+      document.getElementById('currentProgress').textContent = `${currentIndex + 1}/${totalCards}`;
+      document.getElementById('categoryCount').textContent = Object.keys(categories).length;
+      
+      const progress = totalCards > 0 ? ((currentIndex + 1) / totalCards) * 100 : 0;
+      document.getElementById('progressFill').style.width = progress + '%';
+    }
+
+    function changeVoiceEngine() {
+      settings.voiceEngine = document.getElementById('voiceSelect').value;
+      saveSettings();
+    }
+
+    function toggleAutoSpeak() {
+      settings.autoSpeak = !settings.autoSpeak;
+      const toggle = document.getElementById('autoSpeakToggle');
+      toggle.classList.toggle('active');
+      saveSettings();
+    }
+
+    function toggleAutoFlip() {
+      settings.autoFlip = !settings.autoFlip;
+      const toggle = document.getElementById('autoFlipToggle');
+      toggle.classList.toggle('active');
+      saveSettings();
+}
+
+    function initSettings() {
+      if (settings.autoSpeak) {
+        document.getElementById('autoSpeakToggle').classList.add('active');
+      }
+      if (settings.autoFlip) {
+        document.getElementById('autoFlipToggle').classList.add('active');
+      }
+      document.getElementById('voiceSelect').value = settings.voiceEngine || 'google';
+    }
+    
+    function switchCategory(categoryName) {
+      currentCategory = categoryName;
+      cards = categories[categoryName] || [];
+      resetLearningOrder();
+      renderCategoryButtons();
+      renderCardList();
+      showCard();
+      updateStats();
+    }
+    
+    function renderCategoryButtons() {
+      const container = document.getElementById('categoryButtons');
+      container.innerHTML = '';
+      Object.keys(categories).forEach(cat => {
+        const btn = document.createElement('button');
+        btn.textContent = `${cat} (${categories[cat].length})`;
+        btn.className = cat === currentCategory ? 'category-btn active' : 'category-btn';
+        btn.onclick = () => switchCategory(cat);
+        container.appendChild(btn);
+      });
+    }
+    
+    function addCategory() {
+      const name = prompt('Tên danh mục mới:');
+      if (name && name.trim() && !categories[name.trim()]) {
+        categories[name.trim()] = [];
+        saveToStorage();
+        switchCategory(name.trim());
+      } else if (categories[name.trim()]) {
+        alert('Danh mục này đã tồn tại!');
+      }
+    }
+    
+    function deleteCategory() {
+      if (Object.keys(categories).length <= 1) {
+        alert('Không thể xóa danh mục cuối cùng!');
+        return;
+      }
+      if (confirm(`Xóa danh mục "${currentCategory}" và tất cả ${cards.length} thẻ trong đó?`)) {
+        delete categories[currentCategory];
+        currentCategory = Object.keys(categories)[0];
+        cards = categories[currentCategory] || [];
+        saveToStorage();
+        resetLearningOrder();
+        renderCategoryButtons();
+        renderCardList();
+        showCard();
+        updateStats();
+      }
+    }
+
+    function resetLearningOrder() {
+      if (cards.length === 0) {
+        learningOrder = [];
+        currentIndex = 0;
+        current = 0;
+        return;
+      }
+      learningOrder = Array.from(Array(cards.length).keys());
+      shuffleArray(learningOrder);
+      currentIndex = 0;
+      current = learningOrder[currentIndex];
+    }
+
+    function shuffleAndRestart() {
+      if (cards.length === 0) return;
+      resetLearningOrder();
+      isFlipped = false;
+      showCard();
+      updateStats();
+    }
+
+    function scheduleAutoFlip() {
+      if (autoFlipTimeout) {
+        clearTimeout(autoFlipTimeout);
+      }
+      if (settings.autoFlip && !isFlipped && cards.length > 0) {
+        autoFlipTimeout = setTimeout(() => {
+          flipCard();
+        }, 2000);
+      }
+    }
+
+    function showCard() {
+      if (cards.length === 0) {
+        document.getElementById('cardText').innerText = 'Chưa có thẻ nào. Thêm thẻ mới bên dưới! 👇';
+        document.getElementById('sideIndicator').innerText = '';
+        return;
+      }
+      const card = cards[current];
+      document.getElementById('cardText').innerText = isFlipped ? card.back : card.front;
+      document.getElementById('sideIndicator').innerText = isFlipped ? 'Mặt sau' : 'Mặt trước';
+      
+      scheduleAutoFlip();
+    }
+
+    function flipCard() {
+      if (cards.length === 0) return;
+      if (autoFlipTimeout) {
+        clearTimeout(autoFlipTimeout);
+      }
+      isFlipped = !isFlipped;
+      showCard();
+    }
+
+    function nextCard() {
+      if (cards.length === 0) return;
+      if (learningOrder.length !== cards.length) resetLearningOrder();
+      currentIndex++;
+      if (currentIndex >= learningOrder.length) {
+        if (confirm("🎉 Đã hoàn thành lượt học! Bắt đầu lại?")) {
+          resetLearningOrder();
+        } else {
+          currentIndex = learningOrder.length - 1;
+          return;
+        }
+      } else {
+        current = learningOrder[currentIndex];
+      }
+      isFlipped = false;
+      showCard();
+      updateStats();
+      
+      if (settings.autoSpeak && cards[current]) {
+        setTimeout(() => speakText(cards[current].front), 300);
+      }
+    }
+
+    function prevCard() {
+      if (cards.length === 0) return;
+      if (learningOrder.length === 0 || currentIndex <= 0) return;
+      currentIndex--;
+      current = learningOrder[currentIndex];
+      isFlipped = false;
+      showCard();
+      updateStats();
+      
+      if (settings.autoSpeak && cards[current]) {
+        setTimeout(() => speakText(cards[current].front), 300);
+      }
+    }
+
+    function addCard() {
+      const front = document.getElementById('newFront').value.trim();
+      const back = document.getElementById('newBack').value.trim();
+      if (front && back) {
+        cards.push({ front, back });
+        categories[currentCategory] = cards;
+        saveToStorage();
+        resetLearningOrder();
+        current = learningOrder[learningOrder.length - 1];
+        currentIndex = learningOrder.length - 1;
+        isFlipped = false;
+        showCard();
+        renderCategoryButtons();
+        renderCardList();
+        updateStats();
+        document.getElementById('newFront').value = '';
+        document.getElementById('newBack').value = '';
+        document.getElementById('newFront').focus();
+      } else {
+        alert('Vui lòng nhập đầy đủ cả từ và nghĩa!');
+      }
+    }
+
+    function handleEnter(event) {
+      if (event.key === 'Enter') {
+        addCard();
+      }
+    }
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (event) => {
+      // Kiểm tra nếu đang nhập text thì không thực hiện keyboard shortcuts
+      const isInputFocused = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA';
+      
+      if (isInputFocused) return;
+
+      switch(event.key) {
+        case 'ArrowRight':  // Mũi tên phải → Next card
+          event.preventDefault();
+          nextCard();
+          break;
+        case 'ArrowLeft':   // Mũi tên trái ← Previous card
+          event.preventDefault();
+          prevCard();
+          break;
+        case 'ArrowDown':   // Mũi tên xuống ↓ Flip card
+          event.preventDefault();
+          flipCard();
+          break;
+        case ' ':           // Space bar - Phát âm
+          event.preventDefault();
+          if (cards[current]) {
+            speakText(cards[current].front);
+          }
+          break;
+      }
+    });
+
+    function renderCardList() {
+      const list = document.getElementById('cardList');
+      if (!list) return;
+      list.innerHTML = '';
+      cards.forEach((card, index) => {
+        const item = document.createElement('li');
+        item.className = 'card-list-item';
+        item.innerHTML = `
+          <div class="card-list-content">
+            <div class="card-list-front">${card.front}</div>
+            <div class="card-list-back">${card.back}</div>
+          </div>
+          <div class="card-list-actions">
+            <button class="btn-icon btn-edit" onclick="editCardFromList(${index})">✏️</button>
+            <button class="btn-icon btn-del" onclick="deleteCardFromList(${index})">🗑️</button>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function editCardFromList(index) {
+      const front = prompt('Nhập từ mới:', cards[index].front);
+      if (front === null) return;
+      const back = prompt('Nhập nghĩa mới:', cards[index].back);
+      if (front && back) {
+        cards[index] = { front, back };
+        categories[currentCategory] = cards;
+        saveToStorage();
+        renderCardList();
+        showCard();
+      }
+    }
+
+    function deleteCardFromList(index) {
+      if (confirm(`Xóa thẻ "${cards[index].front}"?`)) {
+        cards.splice(index, 1);
+        categories[currentCategory] = cards;
+        if (current >= cards.length && cards.length > 0) current = cards.length - 1;
+        saveToStorage();
+        resetLearningOrder();
+        renderCategoryButtons();
+        renderCardList();
+        showCard();
+        updateStats();
+      }
+    }
+
+    function toggleCardList() {
+      const list = document.getElementById('cardList');
+      const toggleText = document.getElementById('toggleListText');
+      if (list.style.display === 'none') {
+        list.style.display = 'flex';
+        toggleText.textContent = '🙈 Ẩn danh sách';
+        renderCardList();
+      } else {
+        list.style.display = 'none';
+        toggleText.textContent = '👁️ Hiện danh sách';
+      }
+    }
+
+    function showSpeakingIndicator() {
+      document.getElementById('speakingIndicator').style.display = 'inline-block';
+    }
+
+    function hideSpeakingIndicator() {
+      document.getElementById('speakingIndicator').style.display = 'none';
+    }
+
+async function speakWithGoogleTTS(text) {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+
+  showSpeakingIndicator();
+  
+  try {
+    // Sử dụng Google Translate TTS API (free, giọng nữ tự nhiên)
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${encodeURIComponent(text)}`;
+    
+    currentAudio = new Audio(url);
+    currentAudio.playbackRate = 0.9;
+    
+    currentAudio.onended = () => {
+      hideSpeakingIndicator();
+      currentAudio = null;
+    };
+    
+    currentAudio.onerror = () => {
+      hideSpeakingIndicator();
+      console.log('Google TTS failed, falling back to browser TTS');
+      speakWithBrowserTTS(text);
+    };
+    
+    await currentAudio.play();
+  } catch (error) {
+    hideSpeakingIndicator();
+    console.log('Error with Google TTS, using browser TTS');
+    speakWithBrowserTTS(text);
+  }
+}
+
+function speakWithBrowserTTS(text) {
+  if ('speechSynthesis' in window) {
+    speechSynthesis.cancel();
+    showSpeakingIndicator();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9;
+    utterance.pitch = 1.1;
+    utterance.volume = 1.0;
+    
+    let voices = speechSynthesis.getVoices();
+    
+    // Cố gắng tìm một giọng nữ chất lượng cao
+    let preferredVoice = voices.find(voice => 
+      voice.lang.startsWith('en-') && 
+      voice.name.includes('Female') && 
+      voice.localService
+    );
+
+    if (!preferredVoice) {
+      preferredVoice = voices.find(voice => 
+        voice.lang.startsWith('en-') && 
+        voice.name.includes('Female')
+      );
+    }
+    
+    // Nếu không tìm thấy, hãy thử một giọng nói phổ biến của Google hoặc Microsoft
+    if (!preferredVoice) {
+      preferredVoice = voices.find(voice => 
+        voice.lang.startsWith('en-') && 
+        (voice.name.includes('Google') || voice.name.includes('Microsoft'))
+      );
+    }
+
+    // Nếu vẫn không có, hãy lấy bất kỳ giọng nói tiếng Anh nào
+    if (!preferredVoice) {
+      preferredVoice = voices.find(voice => voice.lang.startsWith('en-'));
+    }
+    
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+    
+    utterance.onend = () => {
+      hideSpeakingIndicator();
+    };
+    
+    utterance.onerror = (event) => {
+      console.error('SpeechSynthesis Error:', event.error);
+      hideSpeakingIndicator();
+    };
+    
+    speechSynthesis.speak(utterance);
+  } else {
+    alert('Trình duyệt của bạn không hỗ trợ phát âm.');
+  }
+}
+
+function speakText(text) {
+  if (!text) return;
+  speakWithBrowserTTS(text);
+}
+
+    // Khởi tạo
+    window.addEventListener('load', () => {
+      renderCategoryButtons();
+      resetLearningOrder();
+      showCard();
+      renderCardList();
+      updateStats();
+      initSettings();
+    });
+
+    // Load voices khi trình duyệt sẵn sàng
+    if ('speechSynthesis' in window) {
+      speechSynthesis.onvoiceschanged = () => {
+        // Voices loaded
+      };
+    }
+  </script>
+</body>
+</html>
