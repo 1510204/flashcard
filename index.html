@@ -398,19 +398,7 @@ border: none;
       background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
       transition: width 0.3s;
     }
-    .speaking-indicator {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      background: #10b981;
-      border-radius: 50%;
-      margin-left: 8px;
-      animation: pulse 1s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.2); }
-    }
+    /* speaking indicator removed */
     @media (max-width: 768px) {
       .container {
         padding: 20px;
@@ -495,7 +483,6 @@ border: none;
       <button class="btn btn-nav" onclick="prevCard()">⬅️ Trước</button>
       <button class="btn btn-speak" onclick="speakText(cards[current]?.front)" id="speakBtn">
         🔊 Phát âm
-        <span id="speakingIndicator" style="display: none;" class="speaking-indicator"></span>
       </button>
       <button class="btn btn-shuffle" onclick="shuffleAndRestart()">🔀 Xáo trộn</button>
       <button class="btn btn-nav" onclick="nextCard()">Tiếp ➡️</button>
@@ -550,6 +537,7 @@ border: none;
     let isFlipped = false;
     let autoFlipTimeout = null;
     let currentAudio = null;
+    let phoneticCache = JSON.parse(localStorage.getItem('phonetic_cache_v1')) || {};
 
     function shuffleArray(array) {
       for (let i = array.length - 1; i > 0; i--) {
@@ -564,6 +552,127 @@ border: none;
 
     function saveSettings() {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
+
+    function savePhoneticCache() {
+      localStorage.setItem('phonetic_cache_v1', JSON.stringify(phoneticCache));
+    }
+
+    async function getPhonetic(word) {
+      if (!word) return '';
+      const key = word.toLowerCase();
+      if (phoneticCache[key]) return phoneticCache[key];
+
+      try {
+        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(key)}`);
+        if (!res.ok) throw new Error('No entry');
+        const data = await res.json();
+        // Try to find a phonetic text from the response
+        let phon = '';
+        if (Array.isArray(data) && data.length > 0) {
+          const entry = data[0];
+          if (entry.phonetic) phon = entry.phonetic;
+          if (!phon && Array.isArray(entry.phonetics)) {
+            const p = entry.phonetics.find(p => p.text && p.text.trim());
+            if (p) phon = p.text;
+          }
+        }
+        // Normalize: wrap in slashes if not present
+        if (phon && !/^\/.+\/$/.test(phon)) {
+          phon = phon.trim();
+          if (phon) phon = `/${phon}/`;
+        }
+        phoneticCache[key] = phon || '';
+        savePhoneticCache();
+        return phon || '';
+      } catch (e) {
+        // network or not found
+        phoneticCache[key] = '';
+        savePhoneticCache();
+        return '';
+      }
+    }
+
+    async function prefetchPhonetics() {
+      if (!cards || cards.length === 0) return;
+      const tasks = cards.map(async (card) => {
+        if (!card || !card.front) return;
+        const key = card.front.toLowerCase();
+        if (card.phonetic !== undefined && card.phonetic !== undefined) return;
+        try {
+          const phon = await getPhonetic(card.front);
+          card.phonetic = phon || '';
+        } catch (e) {
+          card.phonetic = '';
+        }
+      });
+      await Promise.all(tasks);
+      categories[currentCategory] = cards;
+      saveToStorage();
+    }
+
+    // Prefetch phonetics for all words across all categories with concurrency control
+    async function prefetchAllPhonetics(concurrency = 4) {
+      const allWords = new Set();
+      for (const catName of Object.keys(categories)) {
+        const list = categories[catName] || [];
+        list.forEach(c => {
+          if (c && c.front) allWords.add(c.front.toLowerCase());
+        });
+      }
+
+      const toFetch = Array.from(allWords).filter(w => phoneticCache[w] === undefined);
+      if (toFetch.length === 0) return;
+
+      let idx = 0;
+      let active = 0;
+
+      return new Promise((resolve) => {
+        const startNext = () => {
+          while (active < concurrency && idx < toFetch.length) {
+            const word = toFetch[idx++];
+            active++;
+            // call getPhonetic but don't await here; handle completion in finally
+            getPhonetic(word).finally(() => {
+              active--;
+              // update any card objects that may use this phonetic
+              for (const catName of Object.keys(categories)) {
+                const list = categories[catName] || [];
+                list.forEach(card => {
+                  if (card && card.front && card.front.toLowerCase() === word) {
+                    card.phonetic = phoneticCache[word] || '';
+                  }
+                });
+              }
+              // persist periodically
+              if ((idx % 10) === 0) savePhoneticCache();
+              if ((idx % 10) === 0) saveToStorage();
+              if (idx >= toFetch.length && active === 0) {
+                // final save and resolve
+                savePhoneticCache();
+                // propagate cached phonetics into cards where missing
+                for (const catName of Object.keys(categories)) {
+                  const list = categories[catName] || [];
+                  list.forEach(card => {
+                    if (card && card.front) {
+                      const k = card.front.toLowerCase();
+                      if (card.phonetic === undefined || card.phonetic === null) {
+                        card.phonetic = phoneticCache[k] || '';
+                      }
+                    }
+                  });
+                }
+                saveToStorage();
+                resolve();
+              } else {
+                startNext();
+              }
+            });
+          }
+        };
+
+        startNext();
+      });
     }
 
     function updateStats() {
@@ -609,6 +718,8 @@ border: none;
       currentCategory = categoryName;
       cards = categories[categoryName] || [];
       resetLearningOrder();
+      // prefetch phonetics for new category
+      prefetchPhonetics();
       renderCategoryButtons();
       renderCardList();
       showCard();
@@ -695,10 +806,34 @@ border: none;
         return;
       }
       const card = cards[current];
-      document.getElementById('cardText').innerText = isFlipped ? card.back : card.front;
+      const cardTextEl = document.getElementById('cardText');
       document.getElementById('sideIndicator').innerText = isFlipped ? 'Mặt sau' : 'Mặt trước';
-      
-      scheduleAutoFlip();
+
+      if (!isFlipped) {
+        cardTextEl.innerText = card.front;
+        scheduleAutoFlip();
+        return;
+      }
+
+      // Flipped side: show phonetic (fetched) before meaning
+      if (card.phonetic !== undefined) {
+        cardTextEl.innerText = (card.phonetic ? card.phonetic + ' ' : '') + card.back;
+        scheduleAutoFlip();
+      } else {
+        // show loading then fetch
+        cardTextEl.innerText = '...đang tải phiên âm...';
+        getPhonetic(card.front).then(phon => {
+          // store phonetic on the card for faster reuse
+          card.phonetic = phon || '';
+          categories[currentCategory] = cards;
+          saveToStorage();
+          // only update if still showing same card and flipped
+          if (cards[current] && isFlipped) {
+            cardTextEl.innerText = (phon ? phon + ' ' : '') + card.back;
+          }
+          scheduleAutoFlip();
+        });
+      }
     }
 
     function flipCard() {
@@ -765,6 +900,9 @@ border: none;
         document.getElementById('newFront').value = '';
         document.getElementById('newBack').value = '';
         document.getElementById('newFront').focus();
+        // prefetch phonetics for updated list and kick off background prefetch for all categories
+        prefetchPhonetics();
+        prefetchAllPhonetics(2).catch(()=>{});
       } else {
         alert('Vui lòng nhập đầy đủ cả từ và nghĩa!');
       }
@@ -814,7 +952,7 @@ border: none;
         item.innerHTML = `
           <div class="card-list-content">
             <div class="card-list-front">${card.front}</div>
-            <div class="card-list-back">${card.back}</div>
+            <div class="card-list-back">${card.phonetic ? card.phonetic + ' ' : ''}${card.back}</div>
           </div>
           <div class="card-list-actions">
             <button class="btn-icon btn-edit" onclick="editCardFromList(${index})">✏️</button>
@@ -834,6 +972,9 @@ border: none;
         categories[currentCategory] = cards;
         saveToStorage();
         renderCardList();
+        // prefetch for edited card and kick off background full prefetch
+        prefetchPhonetics();
+        prefetchAllPhonetics(2).catch(()=>{});
         showCard();
       }
     }
@@ -847,6 +988,9 @@ border: none;
         resetLearningOrder();
         renderCategoryButtons();
         renderCardList();
+        // update phonetic cache/storage after deletion and background refresh
+        prefetchPhonetics();
+        prefetchAllPhonetics(2).catch(()=>{});
         showCard();
         updateStats();
       }
@@ -866,11 +1010,11 @@ border: none;
     }
 
     function showSpeakingIndicator() {
-      document.getElementById('speakingIndicator').style.display = 'inline-block';
+      // speaking indicator removed; no-op
     }
 
     function hideSpeakingIndicator() {
-      document.getElementById('speakingIndicator').style.display = 'none';
+      // speaking indicator removed; no-op
     }
 
 async function speakWithGoogleTTS(text) {
@@ -975,6 +1119,9 @@ function speakText(text) {
     window.addEventListener('load', () => {
       renderCategoryButtons();
       resetLearningOrder();
+      // prefetch phonetics for current category (fast) and then prefetch all categories in background
+      prefetchPhonetics();
+      prefetchAllPhonetics(4).catch(()=>{});
       showCard();
       renderCardList();
       updateStats();
